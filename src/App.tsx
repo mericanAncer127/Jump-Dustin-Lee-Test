@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { jsPDF } from 'jspdf';
 import './App.css';
 
 // Define types for component state
 const App: React.FC = () => {
-  const [markdown, setMarkdown] = useState<string>(''); // State to store markdown input
+  const [markdown, setMarkdown] = useState<string>('');  // State to store markdown input
 
   // Handle markdown input change
   const handleMarkdownChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -14,26 +15,40 @@ const App: React.FC = () => {
 
   // Export markdown content to PDF
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.html(document.getElementById('markdown-preview') as HTMLElement, {
-      callback: function (doc) {
-        doc.save('markdown.pdf');
-      },
+    const doc = new jsPDF({
+      unit: 'px', // Units for margins, dimensions, etc.
+      format: 'a4', // A4 paper size (210mm x 297mm)
     });
-  };
 
-  // Copy the rendered rich text (HTML) to the clipboard
-  const copyToClipboard = () => {
+    // Create a temporary div with alternative styles for the PDF
     const previewElement = document.getElementById('markdown-preview') as HTMLElement;
+    
     if (previewElement) {
-      const range = document.createRange();
-      range.selectNodeContents(previewElement);
-      const selection = window.getSelection();
-      if (selection) {
-        selection.removeAllRanges();
-        selection.addRange(range);
-        document.execCommand('copy'); // Execute the copy command
-      }
+      // Create a temporary container to apply PDF styles
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = previewElement.innerHTML; // Copy the content
+      tempDiv.style.fontFamily = 'Arial, sans-serif'; // Font family for PDF
+      tempDiv.style.color = 'black'; // Text color for PDF
+      tempDiv.style.backgroundColor = 'white'; // Background color for PDF
+      tempDiv.style.padding = '20px'; // Padding for content
+      tempDiv.style.borderRadius = '8px';
+      tempDiv.style.fontSize = '16px'; // Set font size for PDF
+      tempDiv.style.lineHeight = '1.5'; // Line height for better readability
+
+      // Append the temporary div to the body for rendering
+      document.body.appendChild(tempDiv);
+
+      // Generate the PDF from the temporary div
+      doc.html(tempDiv, {
+        callback: function (doc) {
+          doc.save('markdown.pdf');
+          // Clean up by removing the temporary div
+          document.body.removeChild(tempDiv);
+        },
+        margin: [10, 10, 10, 10], // 10mm margin on all sides
+        autoPaging: true, // Ensure content is split into multiple pages if needed
+        width: 180, // Width for scaling, leave room for margins (210mm A4 width - 10mm left margin - 10mm right margin = 180mm content width)
+      });
     }
   };
 
@@ -59,7 +74,9 @@ const App: React.FC = () => {
           <button onClick={exportToPDF}>Export PDF</button>
           
           {/* Copy to Clipboard */}
-          <button onClick={copyToClipboard}>Copy</button>
+          <CopyToClipboard text={markdown}>
+            <button>Copy</button>
+          </CopyToClipboard>
         </div>
       </div>
     </div>
